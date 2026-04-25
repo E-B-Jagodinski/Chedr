@@ -2,6 +2,8 @@
 
 A personal finance tracking application built with Python and Dash. Chedr ingests transaction CSVs from multiple bank accounts, categorizes spending automatically, and visualizes monthly expenses against your budget and historical averages.
 
+Developed with help from Claude...I'm not a front-end guy.
+
 ---
 
 ## Screenshots
