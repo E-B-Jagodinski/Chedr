@@ -1,0 +1,12 @@
+{
+    "accounts":{
+            "2348": "Example Checking Acct",
+            "3459": "Example Savings Acct",
+            "3485": "Example Credit Card"
+    },
+
+    "total_csv_filename": "example_total_overview.csv",
+    "total_csv_meta_filename": "example_total_overview_meta.csv",
+    "category_key_filename": "example_key.json",
+    "budget_filename": "example_budget.csv"
+}

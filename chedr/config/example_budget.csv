@@ -1,0 +1,12 @@
+Origin,Amount,How often,Variable,Need/Want/Saving,Category,Account,Monthly,Comment
+Paycheck,3000.0,Bi-Monthly,No,Need,Income,Joint,6000.0,
+Mortgage,2400.0,Monthly,No,Need,Bills & Utilities,Joint,2400.0,
+Electric,200.0,Monthly,Yes,Need,Bills & Utilities,Joint,200.0,"Lowest: $88.10, Highest: $224.47"
+internet,25.0,Monthly,No,Need,Bills & Utilities,Joint,25.0,
+CellPhone,120.0,Monthly,No,Need,Bills & Utilities,Joint,120.0,
+Groceries,250.0,Weekly,Yes,Need,Groceries,Joint,1083.33,
+Spotify,19.23,Monthly,No,Want,Bills & Utilities,Joint,19.23,
+Gas1,160.0,Monthly,Yes,Need,Gas,Joint,160.0,
+Saving Xfer,1000.0,Monthly,No,Saving,Save,Joint,1000.0,To joint savings
+Misc Food,400.0,Monthly,Yes,Want,Food & Drink,Joint,400.0,
+Misc Shopping,250.0,Monthly,No,Want,Shopping,Joint,250.0,

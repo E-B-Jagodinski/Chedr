@@ -1,0 +1,9 @@
+activity/*
+total_overview_meta.csv
+total_overview.csv
+code.*
+__pycache__/*
+*/__pycache__/*
+example.log
+*/__pycache__/*
+scripts/*

@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "chedr"
+version = "0.1.0"
+description = "\"Finance tracking and budgeting app built to read csv statements\""
+authors = ["Eric Jag <ejagodin@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pandas = "^2.2.3"
+matplotlib = "^3.10.1"
+ipykernel = "^6.29.5"
+pyqt6 = "6.4.2"
+pyqt6-plugins = {path = "/home/jago/lib/pyqt6_plugins-6.4.2.2.3-cp311-cp311-manylinux2014_x86_64.whl"}
+pyqt6-tools = "^6.4.2.3.3"
+setuptools = "^80.0.0"
+pyqtgraph = "^0.13.7"
+dash = "^4.1.0"
+dash-bootstrap-components = "^2.0.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
