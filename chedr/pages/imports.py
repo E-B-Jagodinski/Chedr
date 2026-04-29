@@ -110,33 +110,52 @@ def panel_scan_ready(new_files, has_new):
     """
     Step 1 panel — shown on page load.
     Button is enabled if new files exist, greyed out if not.
-    Lists any new files found so the user knows what will be imported.
+    Shows checkboxes for each new file so the user can select which to import.
     """
+    import os
+
     if has_new:
-        file_list = html.Div([
-            html.P(
-                f"{len(new_files)} new file{'s' if len(new_files) != 1 else ''} "
-                f"ready to import:",
-                className="mb-2",
-                style={"fontSize": "0.85rem"}
-            ),
-            html.Ul([
-                html.Li(f, style={"fontSize": "0.82rem", "color": "#6c757d"})
-                for f in [__import__('os').path.basename(f) for f in new_files]
-            ], className="mb-0")
-        ])
-        button_label = f"Import {len(new_files)} file{'s' if len(new_files) != 1 else ''}"
-    else:
-        file_list    = html.P(
-            "No new files found in the imports directory.",
-            className="text-muted mb-0",
+        # One checkbox per file; all checked by default
+        file_checklist = dbc.Checklist(
+            id="import-file-checklist",
+            options=[
+                {"label": os.path.basename(f), "value": f}
+                for f in new_files
+            ],
+            value=new_files,          # all selected by default
+            labelStyle={"fontSize": "0.82rem", "color": "#6c757d",
+                        "display": "block"},
+            className="mb-2",
+        )
+        intro_text = html.P(
+            f"{len(new_files)} new file{'s' if len(new_files) != 1 else ''} "
+            f"ready to import:",
+            className="mb-2",
             style={"fontSize": "0.85rem"}
         )
+        file_section = html.Div([intro_text, file_checklist])
+        button_label = "Import selected"
+    else:
+        # No files — render a dummy checklist so the component ID always exists
+        file_section = html.Div([
+            html.P(
+                "No new files found in the imports directory.",
+                className="text-muted mb-0",
+                style={"fontSize": "0.85rem"}
+            ),
+            # Hidden checklist so the callback Input always resolves
+            dbc.Checklist(
+                id="import-file-checklist",
+                options=[],
+                value=[],
+                style={"display": "none"},
+            ),
+        ])
         button_label = "No new files"
 
     return dbc.Card(dbc.CardBody([
         html.H6("Scan", className="mb-3"),
-        file_list,
+        file_section,
         html.Hr(),
         dbc.Button(
             button_label,
@@ -221,13 +240,14 @@ def panel_scan_summary(results):
 
 
 def panel_categorize(pending, idx):
-    """Shows one uncategorized transaction at a time"""
+    """Shows one uncategorized transaction at a time."""
     total      = len(pending)
     row        = pending[idx]
     categories = get_all_categories()
 
     raw_desc   = row.get("Description", "")
     clean_desc = raw_desc.split("    ")[0].strip()
+    sign = "+" if float(row.get('Amount', 0)) > 0 else "-"
 
     return dbc.Card(dbc.CardBody([
 
@@ -258,7 +278,7 @@ def panel_categorize(pending, idx):
             dbc.Col([
                 html.P("Amount", className="text-muted mb-0",
                        style={"fontSize": "0.75rem"}),
-                html.P(f"${abs(float(row.get('Amount', 0))):,.2f}",
+                html.P(f"{sign}${float(row.get('Amount', 0)):,.2f}",
                        style={"fontWeight": "500"})
             ], width=3),
             dbc.Col([
@@ -280,10 +300,27 @@ def panel_categorize(pending, idx):
             style={"fontSize": "0.82rem", "color": "#6c757d"}
         ),
 
-        # Editable substring key
-        html.P("Save as key (edit to shorten)",
-               className="text-muted mb-1",
-               style={"fontSize": "0.75rem"}),
+        # Editable substring key + no-save toggle on the same row
+        dbc.Row([
+            dbc.Col(
+                html.P("Save as key (edit to shorten)",
+                       className="text-muted mb-1",
+                       style={"fontSize": "0.75rem"}),
+                width=True
+            ),
+            dbc.Col(
+                dbc.Checklist(
+                    id="import-no-key-toggle",
+                    options=[{"label": "Don't save key", "value": "no_key"}],
+                    value=[],
+                    switch=True,
+                    inputStyle={"cursor": "pointer"},
+                    labelStyle={"fontSize": "0.8rem", "color": "#6c757d",
+                                "cursor": "pointer", "whiteSpace": "nowrap"},
+                ),
+                width="auto",
+            ),
+        ], align="center", className="mb-1"),
         dbc.Input(
             id="import-key-input",
             value=clean_desc,
@@ -301,6 +338,18 @@ def panel_categorize(pending, idx):
             placeholder="Select a category...",
             clearable=False,
             className="mb-3"
+        ),
+
+        # Ignore toggle
+        dbc.Checklist(
+            id="import-ignore-toggle",
+            options=[{"label": "Mark as ignored", "value": "ignore"}],
+            value=[],
+            switch=True,
+            className="mb-3",
+            inputStyle={"cursor": "pointer"},
+            labelStyle={"fontSize": "0.85rem", "color": "#6c757d",
+                        "cursor": "pointer"},
         ),
 
         # Action buttons
@@ -358,22 +407,42 @@ def panel_done():
 # --------------------------------------------------------- callbacks ---
 
 @callback(
+    Output("import-run-btn", "disabled"),
+    Input("import-file-checklist", "value"),
+    prevent_initial_call=True,
+)
+def toggle_import_button(selected_files):
+    """Disable the Import button when no files are checked."""
+    return not selected_files
+
+
+@callback(
+    Output("import-key-input", "disabled"),
+    Input("import-no-key-toggle", "value"),
+)
+def toggle_key_input(no_key_value):
+    """Grey out the key input when 'Don't save key' is on."""
+    return "no_key" in (no_key_value or [])
+
+
+@callback(
     Output("import-scan-results", "data"),
     Output("import-pending",      "data",     allow_duplicate=True),
     Output("import-step",         "data",     allow_duplicate=True),
     Output("import-step-panel",   "children", allow_duplicate=True),
     Input("import-run-btn",       "n_clicks"),
+    State("import-file-checklist","value"),
     State("import-pending",       "data"),
     prevent_initial_call=True
 )
-def run_import(n_clicks, existing_pending):
+def run_import(n_clicks, selected_files, existing_pending):
     """
     Triggered by the Import button click.
+    Only imports the files the user has checked.
     Runs ingestion, re-categorizes, then merges any newly uncategorized
     transactions with any that were already pending from before.
     """
-    # Run ingestion — returns only the newly added filenames
-    newly_added  = fin.add_statements()
+    newly_added  = fin.add_statements(files=selected_files or [])
     fin.set_categories_by_key()
     fin.set_datetime()
     fin.store_total_overview()
@@ -437,10 +506,13 @@ def skip_to_categorize(n_clicks, pending, idx):
 
 @callback(
     Output("import-confirm", "disabled"),
-    Input("import-category-pick", "value"),
+    Input("import-category-pick",  "value"),
+    Input("import-ignore-toggle",  "value"),
 )
-def toggle_confirm_button(category):
-    return category is None
+def toggle_confirm_button(category, ignore_value):
+    """Enable Confirm if a category is selected OR the ignore toggle is on."""
+    is_ignored = "ignore" in (ignore_value or [])
+    return not (category or is_ignored)
 
 
 @callback(
@@ -453,18 +525,25 @@ def toggle_confirm_button(category):
     State("import-pending-idx",   "data"),
     State("import-category-pick", "value"),
     State("import-key-input",     "value"),
+    State("import-ignore-toggle", "value"),
+    State("import-no-key-toggle", "value"),
     prevent_initial_call=True
 )
-def handle_categorize(confirm_clicks, skip_clicks, pending, idx, category, key):
+def handle_categorize(confirm_clicks, skip_clicks, pending, idx,
+                      category, key, ignore_value, no_key_value):
     triggered  = dash.callback_context.triggered[0]["prop_id"]
     is_confirm = "confirm" in triggered
+    is_ignored = "ignore" in (ignore_value or [])
+    save_key   = "no_key" not in (no_key_value or [])
 
-    if is_confirm and category:
+    if is_confirm:
         fin.resolve_category(
             description=pending[idx]["Description"],
             category=category,
-            key_substring=key
+            key_substring=key if save_key else None,
+            ignore=is_ignored,
         )
+        fin.set_categories_by_key()
 
     next_idx = idx + 1
     if next_idx >= len(pending):

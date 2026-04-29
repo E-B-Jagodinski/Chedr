@@ -12,6 +12,7 @@ dash.register_page(__name__, path="/budget", name="Budget")
 
 CADENCE_OPTIONS = [
     {"label": "Weekly",     "value": "Weekly"},
+    {"label": "Bi-Weekly",  "value": "Bi-Weekly"},
     {"label": "Bi-weekly",  "value": "Bi-weekly"},
     {"label": "Monthly",    "value": "Monthly"},
     {"label": "Bi-Monthly", "value": "Bi-Monthly"},

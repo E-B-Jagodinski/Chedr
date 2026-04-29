@@ -113,6 +113,8 @@ class Chedr:
             monthly = amount / 6
         elif often == "Bi-Monthly":
             monthly = amount * 2
+        elif often == "Bi-Weekly":
+            monthly = amount * 2.166667
         else:
             raise ValueError(f"Unknown type: {often}")
         return round(monthly, 2)
@@ -129,7 +131,11 @@ class Chedr:
     def read_statement(self, statement: str) -> tuple[pd.DataFrame, list[str]]:
         """Read a statement and prepare it to be added"""
         # Get account type and name
-        acct_n = [k for k in self.config['accounts'] if k in statement][0]
+        acct_n = [k for k in self.config['accounts'] if k in statement]
+        if acct_n == []:
+            raise ValueError(f"Unknown account id statement {statement}")
+        else:
+            acct_n = acct_n[0]
         acct_type = self.config['accounts'][acct_n]
         logging.info(f"Adding statement for {acct_type}: {os.path.basename(statement)}")
 
@@ -177,15 +183,17 @@ class Chedr:
             all_df[n] = df
         return all_df
     
-    def remove_overviews_from_statement_list(self, statements_list: list[str]) -> list[str]:
+    def remove_ignored_statements_from_list(self, statements_list: list[str]) -> list[str]:
         return_list = []
-        overviews = [self.config["total_csv_filename"], self.config["total_csv_meta_filename"]]
+        ignores = [self.config["total_csv_filename"], self.config["total_csv_meta_filename"]]
         for s in statements_list:
-            if not any([o in s for o in overviews]) and not Path(s).is_dir():
+            if (not any([o in s for o in ignores]) and
+                not Path(s).is_dir() and
+                not "saving" in s.lower()):
                 return_list.append(s)
         return return_list
 
-    def add_statements(self) -> list[str]:
+    def add_statements(self, files: list[str]) -> list[str]:
         """Adds new statements to the total overview, returns list of new filenames"""
         
         if self.total_csv_exists:
@@ -197,9 +205,9 @@ class Chedr:
             total_cols = []
             all_df     = []
 
-        statements_directory_name = os.path.join(ACTIVITIES_DIRECTORY, '*')
-        statements_list = glob.glob(statements_directory_name)
-        statements_list = self.remove_overviews_from_statement_list(statements_list)
+        # statements_directory_name = os.path.join(ACTIVITIES_DIRECTORY, '*')
+        statements_list = files
+        statements_list = self.remove_ignored_statements_from_list(statements_list)
 
         newly_added = []
         for statement in statements_list:
@@ -246,7 +254,7 @@ class Chedr:
 
         statements_directory_name = os.path.join(ACTIVITIES_DIRECTORY, '*')
         statements_list = glob.glob(statements_directory_name)
-        statements_list = self.remove_overviews_from_statement_list(statements_list)
+        statements_list = self.remove_ignored_statements_from_list(statements_list)
 
         if self.total_csv_exists:
             meta_list = self.total_csv_meta["statements"].tolist()
@@ -275,7 +283,13 @@ class Chedr:
         ]
         return df_nan.to_dict('records')  # Dash stores data as dicts
 
-    def resolve_category(self, description: str, category: str, key_substring:str=None):
+    def resolve_category(
+            self,
+            description: str,
+            category: str,
+            key_substring:str=None,
+            ignore:bool=False,
+        ):
         """Resolves a single uncategorized transaction"""
         # Save the key — use provided substring or fall back to cleaned description
         key = key_substring.strip() if key_substring else description.split("    ")[0].strip()
