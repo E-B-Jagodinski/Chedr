@@ -243,7 +243,8 @@ def render_deepdive(idx, window, avg_mode, months):
     ]
 
     # --- Budget ---
-    budget = fin.calculate_budget_monthly().set_index("Category")["monthly_amount"]
+    budget0 = fin.calculate_budget_monthly().set_index("Category")["monthly_amount"]
+    budget = budget0.drop(labels=["Income"])
     budgeted = budget.reindex(all_cats, fill_value=0)
 
     # Color spent bars: red if over budget, green if under

@@ -30,7 +30,7 @@ def get_transactions_df():
     # Filter first, while all columns are still available
     df = df.loc[
         (df["acct_type"] != "savings") &
-        (df["Amount"] < 0) &
+        # (df["Amount"] < 0) &
         (df["Category"] != "Payment")
     ]
 

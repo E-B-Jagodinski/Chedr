@@ -270,6 +270,8 @@ class Chedr:
             if (k.lower() in row["Description"].lower()) and (row["set"] == False):
                 row["Category"] = v
                 row["set"] = True
+                if k.lower() == "ignore".lower():
+                    row["ignore"] = True
         return row
 
     def set_categories_by_key(self):
@@ -291,10 +293,9 @@ class Chedr:
             ignore:bool=False,
         ):
         """Resolves a single uncategorized transaction"""
-        # Save the key — use provided substring or fall back to cleaned description
-        key = key_substring.strip() if key_substring else description.split("    ")[0].strip()
-        if key:
-            self.category_key[key] = category
+        # Save the key
+        if key_substring:
+            self.category_key[key_substring.strip()] = category
 
         # Apply to all matching rows that aren't yet set
         mask = (
@@ -308,6 +309,7 @@ class Chedr:
 
     def store_total_overview(self):
         """Save the total overview and overview meta"""
+        self.total_df.loc[self.total_df["Category"] == "IGNORE", "ignore"] = True
         self.total_df.to_csv(self.total_csv_filename, index=False)
         self.total_csv_meta.to_csv(self.total_csv_meta_filename, index=False)
         with open(self.category_key_filename, 'w') as json_file:

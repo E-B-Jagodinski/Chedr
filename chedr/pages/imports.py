@@ -519,6 +519,7 @@ def toggle_confirm_button(category, ignore_value):
     Output("import-step-panel",   "children", allow_duplicate=True),
     Output("import-pending-idx",  "data",     allow_duplicate=True),
     Output("import-step",         "data",     allow_duplicate=True),
+    Output("import-pending",      "data",     allow_duplicate=True),
     Input("import-confirm",       "n_clicks"),
     Input("import-skip",          "n_clicks"),
     State("import-pending",       "data"),
@@ -543,14 +544,25 @@ def handle_categorize(confirm_clicks, skip_clicks, pending, idx,
             key_substring=key if save_key else None,
             ignore=is_ignored,
         )
-        fin.set_categories_by_key()
+
+        if save_key and key:
+            # Re-apply all saved keys to total_df, then rebuild the pending
+            # list from scratch — any transactions the new key just matched
+            # will have been categorized and will drop out automatically.
+            fin.set_categories_by_key()
+            pending_df = fin.total_df.loc[
+                fin.total_df["Category"].apply(lambda x: not isinstance(x, str))
+            ]
+            updated = pending_df[["Date", "Description", "Amount", "acct"]].copy()
+            updated["Date"] = updated["Date"].astype(str)
+            pending = updated.to_dict("records")
 
     next_idx = idx + 1
     if next_idx >= len(pending):
         fin.store_total_overview()
-        return panel_done(), next_idx, 3
+        return panel_done(), next_idx, 3, pending
 
-    return panel_categorize(pending, next_idx), next_idx, 2
+    return panel_categorize(pending, next_idx), next_idx, 2, pending
 
 
 @callback(
