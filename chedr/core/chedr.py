@@ -45,6 +45,9 @@ class Chedr:
         # Read the budget csv
         self.read_budget()
 
+        # Read the savings & investments tracker
+        self.read_savings_investments()
+
         # Add statements to overall total
         # self.add_statements()
 
@@ -81,6 +84,13 @@ class Chedr:
         self.total_csv_meta_filename = os.path.join(ACTIVITIES_DIRECTORY, self.config["total_csv_meta_filename"])
         self.category_key_filename = os.path.join(CONFIG_DIRECTORY, self.config["category_key_filename"])
         self.budget_filename = os.path.join(CONFIG_DIRECTORY, self.config["budget_filename"])
+
+        # Savings & investments tracker — falls back to a default filename
+        # so this doesn't require a config.json edit to work.
+        self.savings_investments_filename = os.path.join(
+            ACTIVITIES_DIRECTORY,
+            self.config.get("savings_investments_filename", "savings_investments.json")
+        )
 
         # Read the category key
         logging.info(f"Reading category keys: {self.category_key_filename}")
@@ -127,6 +137,67 @@ class Chedr:
 
         # Calculate the monthly amount
         self.budget_df["monthly_amount"] = self.budget_df.apply(lambda r: Chedr.monthly_cost(r), axis = 1)
+
+    def read_savings_investments(self):
+        """Reads the savings & investments tracking json into memory"""
+        if os.path.exists(self.savings_investments_filename):
+            with open(self.savings_investments_filename, 'r') as f:
+                self.savings_investments = json.load(f)
+        else:
+            self.savings_investments = {}
+
+    def store_savings_investments(self):
+        """Persists the savings & investments dict to disk"""
+        with open(self.savings_investments_filename, 'w') as json_file:
+            json.dump(self.savings_investments, json_file, indent=4)
+
+    def get_savings_accounts(self) -> list[str]:
+        """Returns the sorted list of tracked account names"""
+        if not hasattr(self, "savings_investments"):
+            self.read_savings_investments()
+        return sorted(self.savings_investments.keys())
+
+    def add_savings_entry(self, account: str, entry_date: str, balance: float):
+        """
+        Adds a balance entry for the given account/date, creating the
+        account if it doesn't exist yet. If an entry already exists for
+        that exact date, it is overwritten rather than duplicated.
+        """
+        if not hasattr(self, "savings_investments"):
+            self.read_savings_investments()
+
+        entries = self.savings_investments.setdefault(account, [])
+
+        for e in entries:
+            if e["date"] == entry_date:
+                e["balance"] = round(float(balance), 2)
+                break
+        else:
+            entries.append({"date": entry_date, "balance": round(float(balance), 2)})
+
+        entries.sort(key=lambda e: e["date"])
+        self.store_savings_investments()
+
+    def get_savings_dataframe(self) -> pd.DataFrame:
+        """
+        Returns a long-format DataFrame (Date, Account, Balance) suitable
+        for a multi-line plot, one trace per account.
+        """
+        if not hasattr(self, "savings_investments"):
+            self.read_savings_investments()
+
+        rows = []
+        for account, entries in self.savings_investments.items():
+            for e in entries:
+                rows.append({"Account": account, "Date": e["date"], "Balance": e["balance"]})
+
+        if not rows:
+            return pd.DataFrame(columns=["Account", "Date", "Balance"])
+
+        df = pd.DataFrame(rows)
+        df["Date"] = pd.to_datetime(df["Date"], format="mixed")
+        df = df.sort_values("Date").reset_index(drop=True)
+        return df
 
     def read_statement(self, statement: str) -> tuple[pd.DataFrame, list[str]]:
         """Read a statement and prepare it to be added"""

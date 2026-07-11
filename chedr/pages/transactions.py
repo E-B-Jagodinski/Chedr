@@ -18,7 +18,7 @@ def month_label(ym):
     return date(ym[0], ym[1], 1).strftime("%B %Y")
 
 def get_accounts():
-    return sorted(fin.total_df["acct"].dropna().unique().tolist())
+    return fin.total_df["acct"].dropna().unique().tolist()
 
 def get_categories():
     return sorted(fin.total_df["Category"].dropna().unique().tolist())

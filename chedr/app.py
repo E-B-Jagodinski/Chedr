@@ -21,6 +21,7 @@ navbar = dbc.NavbarSimple(
         dbc.NavItem(dbc.NavLink("Transactions", href="/transactions", active="exact")),
         dbc.NavItem(dbc.NavLink("Import",       href="/import",      active="exact")),
         dbc.NavItem(dbc.NavLink("Budget", href="/budget", active="exact")),
+        dbc.NavItem(dbc.NavLink("Savings & Investments", href="/savings-investments", active="exact")),
     ],
     brand="Chedr",
     brand_href="/",

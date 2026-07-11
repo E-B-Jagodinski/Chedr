@@ -56,7 +56,7 @@ def layout():
                 ),
                 dcc.Slider(
                     id="avg-slider",
-                    min=3, max=12, step=3, value=6,
+                    min=3, max=12, step=3, value=3,
                     marks={3: "3", 6: "6", 9: "9", 12: "12"},
                     tooltip={"always_visible": False},
                     className="mt-1"
