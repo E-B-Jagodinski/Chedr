@@ -10,7 +10,7 @@ import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-import os, sys, glob, json, datetime, json, logging
+import os, sys, glob, json, datetime, json, logging, shutil
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -323,6 +323,9 @@ class Chedr:
             self.total_df       = pd.DataFrame()   # always exists after this point
             self.total_csv_meta = pd.DataFrame({"statements": []})
 
+        # Pull any new account CSVs from external directories into activity/
+        self.collect_external_statements()
+
         statements_directory_name = os.path.join(ACTIVITIES_DIRECTORY, '*')
         statements_list = glob.glob(statements_directory_name)
         statements_list = self.remove_ignored_statements_from_list(statements_list)
@@ -542,6 +545,42 @@ class Chedr:
             merged.plot(x="Category", y=["Budgeted", "Spent"], kind="bar", ax=ax,
                     figsize=FIGSIZE, color=Chedr.colors(cat_budget))
         return merged
+
+    def collect_external_statements(self) -> list[str]:
+        """
+        Copies account CSVs from the configured import_directories into
+        ACTIVITIES_DIRECTORY so they show up as importable. Matches on the
+        FILENAME (not the full path) containing a known account id.
+        Skips files already in the manifest or already present in activity/.
+        """
+        dirs = self.config.get("import_directories", [])
+        if not dirs:
+            return []
+
+        os.makedirs(ACTIVITIES_DIRECTORY, exist_ok=True)
+        imported = set(self.total_csv_meta["statements"].tolist())
+        copied = []
+
+        for d in dirs:
+            d = os.path.expanduser(d)
+            if not os.path.isdir(d):
+                logging.warning(f"import directory not found: {d}")
+                continue
+            for entry in os.scandir(d):
+                name = entry.name
+                if not (entry.is_file() and name.lower().endswith(".csv")):
+                    continue
+                if not any(acct in name for acct in self.config["accounts"]):
+                    continue
+                if not self.remove_ignored_statements_from_list([name]):
+                    continue   # same exclusions as the normal scan (e.g. "saving")
+                dest = os.path.join(ACTIVITIES_DIRECTORY, name)
+                if name in imported or os.path.exists(dest):
+                    continue
+                shutil.copy2(entry.path, dest)   # copy, not move; keeps mtime
+                logging.info(f"Copied {entry.path} -> {dest}")
+                copied.append(dest)
+        return copied
 
 
 if __name__ == "__main__":
